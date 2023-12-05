@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 import settings
 
 # create async engine for interaction with database
-engine = create_async_engine(settings.DB_URL, future=True, echo=True)
+engine = create_async_engine(settings.DB_URL, future=True, echo=True, execution_options={"isolation_level": "AUTOCOMMIT"})
 
 # create session for the interaction with database
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
