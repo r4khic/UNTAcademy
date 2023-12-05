@@ -3,9 +3,9 @@ import json
 
 async def test_create_user(client, get_user_from_database):
     user_data = {
-      "name": "r4khic",
-      "surname": "arinov",
-      "email": "lol@kekche.com"
+      "name": "tailer",
+      "surname": "derden",
+      "email": "fight@club.com"
     }
     resp = client.post("/user/", data=json.dumps(user_data))
     data_from_resp = resp.json()

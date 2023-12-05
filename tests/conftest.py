@@ -1,4 +1,3 @@
-import os
 import asyncio
 from typing import Generator, Any
 
@@ -27,15 +26,18 @@ CLEAN_TABLES = [
 @pytest.fixture(scope="session")
 def event_loop():
     loop = asyncio.get_event_loop_policy().new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def run_migrations():
-    os.system("alembic init migrations")
-    os.system('alembic revision --autogenerate -m "test running migrations"')
-    os.system("alembic upgrade heads")
+@pytest.fixture(autouse=True, scope='session')
+async def prepare_database():
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture(scope="session")
@@ -43,15 +45,6 @@ async def async_session_test():
     engine = create_async_engine(settings.DB_TEST_URL, future=True, echo=True)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     yield async_session
-
-
-@pytest.fixture(scope="function", autouse=True)
-async def clean_tables(async_session_test):
-    """Clean data in all tables before running test function"""
-    async with async_session_test() as session:
-        async with session.begin():
-            for table_for_cleaning in CLEAN_TABLES:
-                await session.execute(f"""TRUNCATE TABLE {table_for_cleaning};""")
 
 
 async def _get_test_db():
@@ -74,7 +67,7 @@ async def client() -> Generator[TestClient, Any, None]:
 
 @pytest.fixture(scope="session")
 async def asyncpg_pool():
-    pool = await asyncpg.create_pool("".join(settings.DB_TEST_URL.split("+asyncpg")))
+    pool = await asyncpg.create_pool("postgresql://postgres_test:postgres_test@localhost:5433/postgres_test")
     yield pool
     pool.close()
 
