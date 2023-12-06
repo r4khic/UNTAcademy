@@ -12,35 +12,17 @@ from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import settings
+from api.actions.auth import get_user_by_email_for_auth, authenticate_user
 from api.models import Token
-from db.dao import UserDAO
-from db.models import User
 from db.session import get_db
-from hashing import Hasher
 from security import create_access_token
 
 login_router = APIRouter()
 
 
-async def _get_user_by_email_for_auth(email: str, session: AsyncSession):
-    async with session.begin():
-        user_dal = UserDAO(session)
-        return await user_dal.get_user_by_email(
-            email=email,
-        )
-
-
-async def authenticate_user(email: str, password: str, session: AsyncSession) -> Union[User, None]:
-    user = await _get_user_by_email_for_auth(email=email, session=session)
-    if user is None:
-        return
-    if not Hasher.verify_password(password, user.hashed_password):
-        return
-    return user
-
-
 @login_router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), session: AsyncSession = Depends(get_db)):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),
+                                 session: AsyncSession = Depends(get_db)):
     user = await authenticate_user(form_data.username, form_data.password, session)
     if not user:
         raise HTTPException(
@@ -72,14 +54,7 @@ async def get_current_user_from_token(token: str = Depends(oauth2_scheme), sessi
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = await _get_user_by_email_for_auth(email=email, session=session)
+    user = await get_user_by_email_for_auth(email=email, session=session)
     if user is None:
         raise credentials_exception
     return user
-
-
-@login_router.get("/test_auth_endpoint")
-async def sample_endpoint_under_jwt(
-    current_user: User = Depends(get_current_user_from_token),
-):
-    return {"Success": True, "current_user": current_user}
