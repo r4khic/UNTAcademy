@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.models import UserCreate, ShowUser, DeleteUserResponse, UpdatedUserResponse, UpdateUserRequest
 from db.dao import UserDAO
 from db.session import get_db
+from hashing import Hasher
 
 user_router = APIRouter()
 
@@ -19,6 +20,7 @@ async def _create_new_user(body: UserCreate, db) -> ShowUser:
                 name=body.name,
                 surname=body.surname,
                 email=body.email,
+                hashed_password=Hasher.get_password_hash(body.password),
             )
             return ShowUser(
                 user_id=user.user_id,
